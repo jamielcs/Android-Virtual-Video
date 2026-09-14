@@ -357,9 +357,9 @@ class MainActivity : AppCompatActivity() {
                     "echo; echo '=== CAMERA PROPERTIES ==='; " +
                     "getprop | grep -Ei 'camera|vendor.camera|persist.*camera' || true; " +
                     "echo; echo '=== MEDIA.CAMERA FOCUSED ==='; " +
-                    "dumpsys media.camera > $TMP 2>/dev/null; " +
-                    "grep -Ei 'provider|device|camera id|cameraid|hal|external|virtual|vendor|status|api1|api2|torch|client' $TMP | head -n 160; " +
-                    "rm -f $TMP; " +
+                    "dumpsys media.camera > \$TMP 2>/dev/null; " +
+                    "grep -Ei 'provider|device|camera id|cameraid|hal|external|virtual|vendor|status|api1|api2|torch|client' \$TMP | head -n 160; " +
+                    "rm -f \$TMP; " +
                     "echo; echo '=== DONE ==='"
 
                 val method = Shizuku::class.java.getDeclaredMethod(
