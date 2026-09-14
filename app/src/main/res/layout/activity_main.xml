@@ -16,7 +16,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Virtual Video"
+            android:text="Vir Vid 3"
             android:textColor="@color/white"
             android:textSize="28sp"
             android:textStyle="bold" />
@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="V2 Experimental • non-root capability lab"
+            android:text="V3 • Camera Capability Probe"
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 
@@ -122,7 +122,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:paddingBottom="10dp"
             android:text="Status: siap"
             android:textColor="@color/text_secondary"
             android:textSize="13sp" />
@@ -151,18 +150,10 @@
                     android:textStyle="bold" />
 
                 <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:text="Cek kemampuan non-root perangkat sebelum eksperimen bridge kamera."
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
-
-                <TextView
                     android:id="@+id/deviceInfoText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="12dp"
                     android:text="Device: scanning..."
                     android:textColor="@color/white"
                     android:textSize="13sp" />
@@ -214,12 +205,66 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/surface_2"
+            app:cardCornerRadius="18dp"
+            app:strokeColor="@color/accent"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Camera Capability Probe"
+                    android:textColor="@color/white"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/runCameraProbeButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="12dp"
+                    android:text="Run Camera Probe"
+                    android:textAllCaps="false"
+                    app:cornerRadius="14dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/runShellProbeButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="8dp"
+                    android:text="Run Camera Service Probe"
+                    android:textAllCaps="false" />
+
+                <TextView
+                    android:id="@+id/cameraProbeText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="monospace"
+                    android:text="Belum dijalankan."
+                    android:textColor="@color/white"
+                    android:textIsSelectable="true"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:paddingBottom="18dp"
-            android:text="Catatan: V2 belum mengganti kamera TikTok. Tahap ini menguji Shizuku, ADB/Developer Options, dan kesiapan surface video."
+            android:paddingBottom="20dp"
+            android:text="V3 hanya memetakan kemampuan kamera dan service perangkat. Belum mengganti input kamera aplikasi lain."
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
 
