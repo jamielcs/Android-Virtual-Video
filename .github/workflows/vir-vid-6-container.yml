@@ -55,6 +55,26 @@ jobs:
               fp.write_text(s)
           PY
 
+      - name: Remove unstable Aliyun Maven mirrors
+        working-directory: virvid6
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("settings.gradle")
+          s = p.read_text()
+
+          lines = []
+          for line in s.splitlines():
+              if "maven.aliyun.com" in line:
+                  continue
+              lines.append(line)
+
+          s = "\n".join(lines) + "\n"
+          p.write_text(s)
+          print(s)
+          PY
+
       - name: Build universal debug APK
         working-directory: virvid6
         run: |
