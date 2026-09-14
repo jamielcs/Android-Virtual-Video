@@ -8,11 +8,11 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "id.armagic.virvid7"
+        applicationId = "id.armagic.virvid8"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.7.0"
+        versionCode = 8
+        versionName = "1.8.0"
     }
 
     buildFeatures {
