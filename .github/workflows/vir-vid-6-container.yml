@@ -1,0 +1,77 @@
+name: Vir Vid 6 Container Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/vir-vid-6-container.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout controller repo
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install required SDK/NDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.13846066"
+
+      - name: Clone Android 16 capable container engine
+        run: |
+          git clone --depth 1 https://github.com/Black00Z/Blacks-BlackBox.git virvid6
+
+      - name: Brand as Vir Vid 6
+        working-directory: virvid6
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          s = s.replace('applicationId "com.onebitmonochrome.blacksbbox"', 'applicationId "id.armagic.virvid6"')
+          p.write_text(s)
+
+          for fp in Path("app/src/main/res").glob("values*/strings.xml"):
+              try:
+                  s = fp.read_text()
+              except Exception:
+                  continue
+              s = s.replace("Black\\'s BlackBox", "Vir Vid 6")
+              s = s.replace("Black's BlackBox", "Vir Vid 6")
+              fp.write_text(s)
+          PY
+
+      - name: Build universal debug APK
+        working-directory: virvid6
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Collect universal APK
+        run: |
+          mkdir -p out
+          find virvid6/app/build/outputs/apk -type f -name "*.apk" -print
+          APK="$(find virvid6/app/build/outputs/apk -type f -name "*universal*.apk" | head -n 1)"
+          if [ -z "$APK" ]; then
+            APK="$(find virvid6/app/build/outputs/apk -type f -name "*.apk" | head -n 1)"
+          fi
+          cp "$APK" out/Vir-Vid-6.apk
+
+      - name: Upload Vir Vid 6
+        uses: actions/upload-artifact@v4
+        with:
+          name: vir-vid-6-container
+          path: out/Vir-Vid-6.apk
