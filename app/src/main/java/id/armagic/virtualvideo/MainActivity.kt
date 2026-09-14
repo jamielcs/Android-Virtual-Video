@@ -347,10 +347,20 @@ class MainActivity : AppCompatActivity() {
         Thread {
             val result = runCatching {
                 val command =
-                    "echo '=== CAMERA SERVICES ==='; " +
-                    "service list | grep -i camera; " +
-                    "echo; echo '=== MEDIA.CAMERA SUMMARY ==='; " +
-                    "dumpsys media.camera | head -n 100"
+                    "TMP=/data/local/tmp/virvid4_camera_dump.txt; " +
+                    "echo '=== CAMERA/MEDIA SERVICES ==='; " +
+                    "service list | grep -Ei 'camera|media' || true; " +
+                    "echo; echo '=== CAMERA PROCESSES ==='; " +
+                    "ps -A | grep -Ei 'camera|cameraserver' || true; " +
+                    "echo; echo '=== CAMERA HAL / HIDL / AIDL ==='; " +
+                    "(lshal 2>/dev/null | grep -Ei 'camera|provider|device' || true); " +
+                    "echo; echo '=== CAMERA PROPERTIES ==='; " +
+                    "getprop | grep -Ei 'camera|vendor.camera|persist.*camera' || true; " +
+                    "echo; echo '=== MEDIA.CAMERA FOCUSED ==='; " +
+                    "dumpsys media.camera > $TMP 2>/dev/null; " +
+                    "grep -Ei 'provider|device|camera id|cameraid|hal|external|virtual|vendor|status|api1|api2|torch|client' $TMP | head -n 160; " +
+                    "rm -f $TMP; " +
+                    "echo; echo '=== DONE ==='"
 
                 val method = Shizuku::class.java.getDeclaredMethod(
                     "newProcess",
