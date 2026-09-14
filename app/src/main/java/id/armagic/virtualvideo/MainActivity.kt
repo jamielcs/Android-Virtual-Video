@@ -1,8 +1,11 @@
 package id.armagic.virtualvideo
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -11,6 +14,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import id.armagic.virtualvideo.databinding.ActivityMainBinding
+import rikka.shizuku.Shizuku
 
 class MainActivity : AppCompatActivity() {
 
@@ -19,6 +23,29 @@ class MainActivity : AppCompatActivity() {
 
     private var selectedVideoUri: Uri? = null
     private var cropMode = false
+
+    private val permissionResultListener =
+        Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+            if (requestCode == SHIZUKU_PERMISSION_REQUEST_CODE) {
+                binding.bridgeStatusText.text =
+                    if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                        "Bridge: Shizuku permission granted"
+                    } else {
+                        "Bridge: Shizuku permission ditolak"
+                    }
+                refreshCapabilities()
+            }
+        }
+
+    private val binderReceivedListener =
+        Shizuku.OnBinderReceivedListener {
+            refreshCapabilities()
+        }
+
+    private val binderDeadListener =
+        Shizuku.OnBinderDeadListener {
+            refreshCapabilities()
+        }
 
     private val videoPicker =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -37,7 +64,13 @@ class MainActivity : AppCompatActivity() {
 
         setupPlayer()
         setupControls()
+        setupVirtualCameraLab()
         restoreLastVideo()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshCapabilities()
     }
 
     private fun setupPlayer() {
@@ -98,6 +131,142 @@ class MainActivity : AppCompatActivity() {
         applyResizeMode()
     }
 
+    private fun setupVirtualCameraLab() {
+        Shizuku.addRequestPermissionResultListener(permissionResultListener)
+        Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
+        Shizuku.addBinderDeadListener(binderDeadListener)
+
+        binding.refreshCapabilityButton.setOnClickListener {
+            refreshCapabilities()
+        }
+
+        binding.requestShizukuButton.setOnClickListener {
+            requestShizukuPermission()
+        }
+
+        binding.startSurfaceTestButton.setOnClickListener {
+            runSurfaceTest()
+        }
+
+        refreshCapabilities()
+    }
+
+    private fun refreshCapabilities() {
+        val developerOptionsEnabled = runCatching {
+            Settings.Global.getInt(
+                contentResolver,
+                Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
+                0
+            ) == 1
+        }.getOrDefault(false)
+
+        val adbEnabled = runCatching {
+            Settings.Global.getInt(
+                contentResolver,
+                Settings.Global.ADB_ENABLED,
+                0
+            ) == 1
+        }.getOrDefault(false)
+
+        binding.deviceInfoText.text =
+            "Device: ${Build.MANUFACTURER} ${Build.MODEL} • Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
+            "Developer Options: ${if (developerOptionsEnabled) "ON" else "OFF"} • ADB: ${if (adbEnabled) "ON" else "OFF"}"
+
+        val binderAlive = runCatching {
+            Shizuku.pingBinder()
+        }.getOrDefault(false)
+
+        val permissionGranted = if (binderAlive) {
+            runCatching {
+                Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+            }.getOrDefault(false)
+        } else {
+            false
+        }
+
+        binding.shizukuStatusText.text = when {
+            !binderAlive ->
+                "Shizuku: binder belum aktif • jalankan Shizuku lalu refresh"
+            permissionGranted ->
+                "Shizuku: AKTIF • permission GRANTED • UID ${runCatching { Shizuku.getUid() }.getOrDefault(-1)}"
+            else ->
+                "Shizuku: AKTIF • permission BELUM diberikan"
+        }
+
+        binding.requestShizukuButton.isEnabled = binderAlive && !permissionGranted
+
+        if (!binderAlive) {
+            binding.bridgeStatusText.text =
+                "Bridge: menunggu Shizuku binder"
+        } else if (!permissionGranted) {
+            binding.bridgeStatusText.text =
+                "Bridge: menunggu permission Shizuku"
+        } else if (selectedVideoUri == null) {
+            binding.bridgeStatusText.text =
+                "Bridge: privilege siap • pilih video untuk test surface"
+        } else {
+            binding.bridgeStatusText.text =
+                "Bridge: privilege + video siap • surface dapat diuji"
+        }
+    }
+
+    private fun requestShizukuPermission() {
+        val binderAlive = runCatching {
+            Shizuku.pingBinder()
+        }.getOrDefault(false)
+
+        if (!binderAlive) {
+            binding.bridgeStatusText.text =
+                "Bridge: Shizuku belum aktif. Start Shizuku via Wireless Debugging/ADB."
+            return
+        }
+
+        val currentPermission = runCatching {
+            Shizuku.checkSelfPermission()
+        }.getOrDefault(PackageManager.PERMISSION_DENIED)
+
+        if (currentPermission == PackageManager.PERMISSION_GRANTED) {
+            binding.bridgeStatusText.text =
+                "Bridge: permission Shizuku sudah GRANTED"
+            refreshCapabilities()
+            return
+        }
+
+        runCatching {
+            Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
+        }.onFailure {
+            binding.bridgeStatusText.text =
+                "Bridge: gagal request Shizuku • ${it.javaClass.simpleName}"
+        }
+    }
+
+    private fun runSurfaceTest() {
+        if (selectedVideoUri == null) {
+            binding.bridgeStatusText.text =
+                "Bridge: pilih video dulu sebelum test surface"
+            return
+        }
+
+        if (!player.isPlaying) {
+            player.play()
+        }
+
+        val binderAlive = runCatching {
+            Shizuku.pingBinder()
+        }.getOrDefault(false)
+
+        val permissionGranted = binderAlive && runCatching {
+            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        }.getOrDefault(false)
+
+        binding.bridgeStatusText.text =
+            if (permissionGranted) {
+                "Surface test: OK • decoder berjalan • Shizuku shell privilege siap • global camera bridge belum diaktifkan"
+            } else {
+                "Surface test: OK • decoder berjalan • Shizuku belum siap"
+            }
+    }
+
     private fun loadVideo(uri: Uri, autoPlay: Boolean) {
         binding.emptyText.visibility = View.GONE
 
@@ -114,6 +283,7 @@ class MainActivity : AppCompatActivity() {
             .apply()
 
         updateStatus()
+        refreshCapabilities()
     }
 
     private fun restoreLastVideo() {
@@ -182,6 +352,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        Shizuku.removeRequestPermissionResultListener(permissionResultListener)
+        Shizuku.removeBinderReceivedListener(binderReceivedListener)
+        Shizuku.removeBinderDeadListener(binderDeadListener)
+
         binding.playerView.player = null
         player.release()
         super.onDestroy()
@@ -189,5 +363,6 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val KEY_LAST_VIDEO_URI = "last_video_uri"
+        private const val SHIZUKU_PERMISSION_REQUEST_CODE = 1001
     }
 }
