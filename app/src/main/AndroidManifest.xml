@@ -2,10 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false" />
 
     <application
         android:allowBackup="true"
-        android:label="Virtual Video"
+        android:label="Vir Vid 3"
         android:supportsRtl="true"
         android:theme="@style/Theme.VirtualVideo">
 
