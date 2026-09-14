@@ -75,6 +75,22 @@ jobs:
           print(s)
           PY
 
+      - name: Replace unavailable StateView dependency
+        working-directory: virvid6
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          s = s.replace(
+              "implementation 'com.github.nukc.stateview:kotlin:2.2.0'",
+              "implementation 'com.github.nukc:StateView:v3.0.2'"
+          )
+          p.write_text(s)
+          print("StateView dependency patched")
+          PY
+
       - name: Build universal debug APK
         working-directory: virvid6
         run: |
