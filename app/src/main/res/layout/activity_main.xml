@@ -16,7 +16,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Vir Vid 3"
+            android:text="Vir Vid 4"
             android:textColor="@color/white"
             android:textSize="28sp"
             android:textStyle="bold" />
@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="V3 • Camera Capability Probe"
+            android:text="V4 • Focused Camera/System Probe"
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 
@@ -223,7 +223,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Camera Capability Probe"
+                    android:text="Focused Camera/System Probe"
                     android:textColor="@color/white"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -243,7 +243,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="52dp"
                     android:layout_marginTop="8dp"
-                    android:text="Run Camera Service Probe"
+                    android:text="Run Focused System Probe"
                     android:textAllCaps="false" />
 
                 <TextView
@@ -264,7 +264,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:paddingBottom="20dp"
-            android:text="V3 hanya memetakan kemampuan kamera dan service perangkat. Belum mengganti input kamera aplikasi lain."
+            android:text="V4 memetakan provider/HAL/service kamera dan petunjuk vendor/virtual/external. Belum mengganti input kamera aplikasi lain."
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
 
