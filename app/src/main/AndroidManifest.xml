@@ -7,7 +7,7 @@
 
     <application
         android:allowBackup="true"
-        android:label="Vir Vid 7"
+        android:label="Vir Vid 8"
         android:supportsRtl="true"
         android:theme="@style/Theme.VirtualVideo">
 
