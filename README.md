@@ -2,48 +2,34 @@
 
 Experimental Android virtual-video research project.
 
-## Vir Vid 3
+## Vir Vid 4
 
-Vir Vid 3 uses a different application ID:
+Vir Vid 4 uses its own application ID:
 
-`id.armagic.virvid3`
+`id.armagic.virvid4`
 
-This means it can be installed alongside earlier builds without uninstalling them.
+It can be installed alongside earlier Vir Vid builds without uninstalling them.
 
-### V1
+### V4 focus
 
-- Select local video
-- Preview
-- Loop
-- Play / pause
-- Mute
-- FIT / CROP
+- Camera2 device enumeration
+- Camera front/back/external detection
+- Hardware level and stream capability inspection
+- Camera/media service listing
+- Camera process discovery
+- HAL/HIDL/AIDL camera provider hints via `lshal`
+- Camera-related system/vendor properties
+- Focused `dumpsys media.camera` filtering
+- Search for provider/device/vendor/external/virtual clues
+- Shizuku shell access for diagnostics
+- No long raw dump and no intentional broken-pipe output
 
-### V2
-
-- Shizuku integration
-- ADB / Developer Options detection
-- Surface readiness test
-
-### V3
-
-- Camera2 camera ID enumeration
-- Front / back / external lens detection
-- Hardware level detection
-- Sensor orientation
-- Camera capabilities
-- SurfaceTexture output sizes
-- Concurrent camera sets
-- Camera extension modes
-- Camera service probe through Shizuku shell
-- Separate APK identity: **Vir Vid 3**
-
-V3 is still a capability probe. It does not yet replace the camera input of another app.
+V4 is still a diagnostic build. It does not yet replace another app's camera input.
 
 ## Build
 
 GitHub Actions builds the debug APK automatically.
 
-Artifact name:
+Artifact:
 
-`vir-vid-3-debug`
+`vir-vid-4-debug`
