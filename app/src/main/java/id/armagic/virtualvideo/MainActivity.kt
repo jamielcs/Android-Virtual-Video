@@ -141,7 +141,7 @@ class MainActivity : AppCompatActivity() {
             echo
             echo '=== CANDIDATE FILES ==='
             for d in /system/framework /system_ext/framework /product/framework /vendor/framework /system_ext/priv-app /product/priv-app /vendor/app; do
-              [ -d "$d" ] || continue
+              [ -d "${' ] || continue
               find "$d" -maxdepth 3 -type f \( -iname '*cameraopt*' -o -iname '*camera*opt*' -o -iname '*miui*camera*' \) 2>/dev/null | head -n 120
             done
 
@@ -150,6 +150,794 @@ class MainActivity : AppCompatActivity() {
             for d in /system/framework /system_ext/framework /product/framework /vendor/framework; do
               [ -d "$d" ] || continue
               grep -R -a -l -m 1 'com.miui.cameraopt.ICameraOptManager' "$d" 2>/dev/null | head -n 80
+            done
+
+            echo
+            echo '=== PACKAGE PATH HINTS ==='
+            pm list packages -f 2>&1 | grep -Ei 'cameraopt|miui.*camera|camera.*miui' | head -n 100 || true
+        """.trimIndent()
+
+        val shell = runShell(shellScript)
+
+        val allText = reflection + "\n" + shell.output + "\n" + shell.error
+        val interesting = extractInteresting(allText)
+
+        return buildString {
+            appendLine("=== VIR VID 8 • CAMERAOPT BINDER INSPECTOR ===")
+            appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+            appendLine("Android: ${android.os.Build.VERSION.RELEASE} • API ${android.os.Build.VERSION.SDK_INT}")
+            appendLine("Shizuku UID: ${runCatching { Shizuku.getUid() }.getOrDefault(-1)}")
+            appendLine()
+
+            appendLine("=== IMPORTANT FINDINGS ===")
+            if (interesting.isEmpty()) {
+                appendLine("NONE")
+            } else {
+                interesting.forEach { appendLine(it) }
+            }
+
+            appendLine()
+            appendLine(reflection)
+
+            appendLine()
+            appendLine("=== SHIZUKU CAMERAOPT INSPECTION ===")
+            appendLine("Exit: ${shell.exitCode}")
+            if (shell.output.isNotBlank()) appendLine(shell.output.trim())
+            if (shell.error.isNotBlank()) {
+                appendLine()
+                appendLine("--- STDERR ---")
+                appendLine(shell.error.trim())
+            }
+
+            appendLine()
+            appendLine("=== DONE ===")
+        }
+    }
+
+    private fun inspectClasses(): String {
+        val candidates = listOf(
+            "com.miui.cameraopt.ICameraOptManager",
+            "com.miui.cameraopt.ICameraOptManager\$Stub",
+            "com.miui.cameraopt.ICameraOptManager\$Stub\$Proxy",
+            "com.miui.cameraopt.MiuiCameraManager",
+            "com.miui.cameraopt.CameraOptManager"
+        )
+
+        return buildString {
+            appendLine("=== JAVA REFLECTION ===")
+
+            for (className in candidates) {
+                appendLine()
+                appendLine("[$className]")
+
+                val clazz = runCatching { Class.forName(className) }.getOrNull()
+
+                if (clazz == null) {
+                    appendLine("CLASS: NOT EXPOSED TO APP CLASSLOADER")
+                    continue
+                }
+
+                appendLine("CLASS: FOUND")
+                appendLine("SUPER: ${clazz.superclass?.name ?: "-"}")
+                appendLine("INTERFACES: ${clazz.interfaces.joinToString(", ") { it.name }.ifBlank { "-" }}")
+
+                val fields: List<Field> = runCatching {
+                    clazz.declaredFields.toList().sortedBy { it.name }
+                }.getOrElse { emptyList() }
+
+                if (fields.isNotEmpty()) {
+                    appendLine("FIELDS:")
+                    fields.take(160).forEach { field ->
+                        val staticValue = if (Modifier.isStatic(field.modifiers)) {
+                            runCatching {
+                                field.isAccessible = true
+                                field.get(null)?.toString()
+                            }.getOrNull()
+                        } else {
+                            null
+                        }
+
+                        appendLine(
+                            "  ${field.type.simpleName} ${field.name}" +
+                                if (staticValue != null) " = $staticValue" else ""
+                        )
+                    }
+                }
+
+                val methods: List<Method> = runCatching {
+                    clazz.declaredMethods.toList().sortedWith(
+                        compareBy<Method>({ it.name.lowercase() }, { it.parameterCount })
+                    )
+                }.getOrElse { emptyList() }
+
+                if (methods.isNotEmpty()) {
+                    appendLine("METHODS:")
+                    methods.take(180).forEach { method ->
+                        appendLine(
+                            "  ${method.returnType.simpleName} ${method.name}(" +
+                                method.parameterTypes.joinToString(", ") { it.simpleName } +
+                                ")"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun extractInteresting(text: String): List<String> {
+        val keys = listOf(
+            "descriptor",
+            "transaction_",
+            "cameraopt",
+            "virtual",
+            "inject",
+            "external",
+            "source",
+            "surface",
+            "stream",
+            "open",
+            "close",
+            "camera"
+        )
+
+        return text
+            .lineSequence()
+            .map { it.trim() }
+            .filter { line ->
+                line.isNotBlank() &&
+                    keys.any { key -> line.lowercase().contains(key) }
+            }
+            .filterNot { it.startsWith("package:") }
+            .distinct()
+            .take(120)
+            .toList()
+    }
+
+    private fun runShell(script: String): ShellResult {
+        return try {
+            val method = Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            )
+
+            method.isAccessible = true
+
+            val process = method.invoke(
+                null,
+                arrayOf("sh", "-c", script),
+                null,
+                null
+            ) as Process
+
+            val stdout = BufferedReader(InputStreamReader(process.inputStream)).readText()
+            val stderr = BufferedReader(InputStreamReader(process.errorStream)).readText()
+            val exit = process.waitFor()
+
+            ShellResult(exit, stdout, stderr)
+        } catch (t: Throwable) {
+            ShellResult(
+                -1,
+                "",
+                "${t.javaClass.name}: ${t.message}"
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        Shizuku.removeRequestPermissionResultListener(permissionResultListener)
+        Shizuku.removeBinderReceivedListener(binderReceivedListener)
+        Shizuku.removeBinderDeadListener(binderDeadListener)
+        super.onDestroy()
+    }
+
+    data class ShellResult(
+        val exitCode: Int,
+        val output: String,
+        val error: String
+    )
+
+    companion object {
+        private const val SHIZUKU_PERMISSION_REQUEST = 8008
+    }
+}
+}d" ] || continue
+              find "${' -maxdepth 3 -type f \( -iname '*cameraopt*' -o -iname '*camera*opt*' -o -iname '*miui*camera*' \) 2>/dev/null | head -n 120
+            done
+
+            echo
+            echo '=== INTERFACE STRING LOCATIONS ==='
+            for d in /system/framework /system_ext/framework /product/framework /vendor/framework; do
+              [ -d "$d" ] || continue
+              grep -R -a -l -m 1 'com.miui.cameraopt.ICameraOptManager' "$d" 2>/dev/null | head -n 80
+            done
+
+            echo
+            echo '=== PACKAGE PATH HINTS ==='
+            pm list packages -f 2>&1 | grep -Ei 'cameraopt|miui.*camera|camera.*miui' | head -n 100 || true
+        """.trimIndent()
+
+        val shell = runShell(shellScript)
+
+        val allText = reflection + "\n" + shell.output + "\n" + shell.error
+        val interesting = extractInteresting(allText)
+
+        return buildString {
+            appendLine("=== VIR VID 8 • CAMERAOPT BINDER INSPECTOR ===")
+            appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+            appendLine("Android: ${android.os.Build.VERSION.RELEASE} • API ${android.os.Build.VERSION.SDK_INT}")
+            appendLine("Shizuku UID: ${runCatching { Shizuku.getUid() }.getOrDefault(-1)}")
+            appendLine()
+
+            appendLine("=== IMPORTANT FINDINGS ===")
+            if (interesting.isEmpty()) {
+                appendLine("NONE")
+            } else {
+                interesting.forEach { appendLine(it) }
+            }
+
+            appendLine()
+            appendLine(reflection)
+
+            appendLine()
+            appendLine("=== SHIZUKU CAMERAOPT INSPECTION ===")
+            appendLine("Exit: ${shell.exitCode}")
+            if (shell.output.isNotBlank()) appendLine(shell.output.trim())
+            if (shell.error.isNotBlank()) {
+                appendLine()
+                appendLine("--- STDERR ---")
+                appendLine(shell.error.trim())
+            }
+
+            appendLine()
+            appendLine("=== DONE ===")
+        }
+    }
+
+    private fun inspectClasses(): String {
+        val candidates = listOf(
+            "com.miui.cameraopt.ICameraOptManager",
+            "com.miui.cameraopt.ICameraOptManager\$Stub",
+            "com.miui.cameraopt.ICameraOptManager\$Stub\$Proxy",
+            "com.miui.cameraopt.MiuiCameraManager",
+            "com.miui.cameraopt.CameraOptManager"
+        )
+
+        return buildString {
+            appendLine("=== JAVA REFLECTION ===")
+
+            for (className in candidates) {
+                appendLine()
+                appendLine("[$className]")
+
+                val clazz = runCatching { Class.forName(className) }.getOrNull()
+
+                if (clazz == null) {
+                    appendLine("CLASS: NOT EXPOSED TO APP CLASSLOADER")
+                    continue
+                }
+
+                appendLine("CLASS: FOUND")
+                appendLine("SUPER: ${clazz.superclass?.name ?: "-"}")
+                appendLine("INTERFACES: ${clazz.interfaces.joinToString(", ") { it.name }.ifBlank { "-" }}")
+
+                val fields: List<Field> = runCatching {
+                    clazz.declaredFields.toList().sortedBy { it.name }
+                }.getOrElse { emptyList() }
+
+                if (fields.isNotEmpty()) {
+                    appendLine("FIELDS:")
+                    fields.take(160).forEach { field ->
+                        val staticValue = if (Modifier.isStatic(field.modifiers)) {
+                            runCatching {
+                                field.isAccessible = true
+                                field.get(null)?.toString()
+                            }.getOrNull()
+                        } else {
+                            null
+                        }
+
+                        appendLine(
+                            "  ${field.type.simpleName} ${field.name}" +
+                                if (staticValue != null) " = $staticValue" else ""
+                        )
+                    }
+                }
+
+                val methods: List<Method> = runCatching {
+                    clazz.declaredMethods.toList().sortedWith(
+                        compareBy<Method>({ it.name.lowercase() }, { it.parameterCount })
+                    )
+                }.getOrElse { emptyList() }
+
+                if (methods.isNotEmpty()) {
+                    appendLine("METHODS:")
+                    methods.take(180).forEach { method ->
+                        appendLine(
+                            "  ${method.returnType.simpleName} ${method.name}(" +
+                                method.parameterTypes.joinToString(", ") { it.simpleName } +
+                                ")"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun extractInteresting(text: String): List<String> {
+        val keys = listOf(
+            "descriptor",
+            "transaction_",
+            "cameraopt",
+            "virtual",
+            "inject",
+            "external",
+            "source",
+            "surface",
+            "stream",
+            "open",
+            "close",
+            "camera"
+        )
+
+        return text
+            .lineSequence()
+            .map { it.trim() }
+            .filter { line ->
+                line.isNotBlank() &&
+                    keys.any { key -> line.lowercase().contains(key) }
+            }
+            .filterNot { it.startsWith("package:") }
+            .distinct()
+            .take(120)
+            .toList()
+    }
+
+    private fun runShell(script: String): ShellResult {
+        return try {
+            val method = Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            )
+
+            method.isAccessible = true
+
+            val process = method.invoke(
+                null,
+                arrayOf("sh", "-c", script),
+                null,
+                null
+            ) as Process
+
+            val stdout = BufferedReader(InputStreamReader(process.inputStream)).readText()
+            val stderr = BufferedReader(InputStreamReader(process.errorStream)).readText()
+            val exit = process.waitFor()
+
+            ShellResult(exit, stdout, stderr)
+        } catch (t: Throwable) {
+            ShellResult(
+                -1,
+                "",
+                "${t.javaClass.name}: ${t.message}"
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        Shizuku.removeRequestPermissionResultListener(permissionResultListener)
+        Shizuku.removeBinderReceivedListener(binderReceivedListener)
+        Shizuku.removeBinderDeadListener(binderDeadListener)
+        super.onDestroy()
+    }
+
+    data class ShellResult(
+        val exitCode: Int,
+        val output: String,
+        val error: String
+    )
+
+    companion object {
+        private const val SHIZUKU_PERMISSION_REQUEST = 8008
+    }
+}
+}d" -maxdepth 3 -type f \( -iname '*cameraopt*' -o -iname '*camera*opt*' -o -iname '*miui*camera*' \) 2>/dev/null | head -n 120
+            done
+
+            echo
+            echo '=== INTERFACE STRING LOCATIONS ==='
+            for d in /system/framework /system_ext/framework /product/framework /vendor/framework; do
+              [ -d "${' ] || continue
+              grep -R -a -l -m 1 'com.miui.cameraopt.ICameraOptManager' "$d" 2>/dev/null | head -n 80
+            done
+
+            echo
+            echo '=== PACKAGE PATH HINTS ==='
+            pm list packages -f 2>&1 | grep -Ei 'cameraopt|miui.*camera|camera.*miui' | head -n 100 || true
+        """.trimIndent()
+
+        val shell = runShell(shellScript)
+
+        val allText = reflection + "\n" + shell.output + "\n" + shell.error
+        val interesting = extractInteresting(allText)
+
+        return buildString {
+            appendLine("=== VIR VID 8 • CAMERAOPT BINDER INSPECTOR ===")
+            appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+            appendLine("Android: ${android.os.Build.VERSION.RELEASE} • API ${android.os.Build.VERSION.SDK_INT}")
+            appendLine("Shizuku UID: ${runCatching { Shizuku.getUid() }.getOrDefault(-1)}")
+            appendLine()
+
+            appendLine("=== IMPORTANT FINDINGS ===")
+            if (interesting.isEmpty()) {
+                appendLine("NONE")
+            } else {
+                interesting.forEach { appendLine(it) }
+            }
+
+            appendLine()
+            appendLine(reflection)
+
+            appendLine()
+            appendLine("=== SHIZUKU CAMERAOPT INSPECTION ===")
+            appendLine("Exit: ${shell.exitCode}")
+            if (shell.output.isNotBlank()) appendLine(shell.output.trim())
+            if (shell.error.isNotBlank()) {
+                appendLine()
+                appendLine("--- STDERR ---")
+                appendLine(shell.error.trim())
+            }
+
+            appendLine()
+            appendLine("=== DONE ===")
+        }
+    }
+
+    private fun inspectClasses(): String {
+        val candidates = listOf(
+            "com.miui.cameraopt.ICameraOptManager",
+            "com.miui.cameraopt.ICameraOptManager\$Stub",
+            "com.miui.cameraopt.ICameraOptManager\$Stub\$Proxy",
+            "com.miui.cameraopt.MiuiCameraManager",
+            "com.miui.cameraopt.CameraOptManager"
+        )
+
+        return buildString {
+            appendLine("=== JAVA REFLECTION ===")
+
+            for (className in candidates) {
+                appendLine()
+                appendLine("[$className]")
+
+                val clazz = runCatching { Class.forName(className) }.getOrNull()
+
+                if (clazz == null) {
+                    appendLine("CLASS: NOT EXPOSED TO APP CLASSLOADER")
+                    continue
+                }
+
+                appendLine("CLASS: FOUND")
+                appendLine("SUPER: ${clazz.superclass?.name ?: "-"}")
+                appendLine("INTERFACES: ${clazz.interfaces.joinToString(", ") { it.name }.ifBlank { "-" }}")
+
+                val fields: List<Field> = runCatching {
+                    clazz.declaredFields.toList().sortedBy { it.name }
+                }.getOrElse { emptyList() }
+
+                if (fields.isNotEmpty()) {
+                    appendLine("FIELDS:")
+                    fields.take(160).forEach { field ->
+                        val staticValue = if (Modifier.isStatic(field.modifiers)) {
+                            runCatching {
+                                field.isAccessible = true
+                                field.get(null)?.toString()
+                            }.getOrNull()
+                        } else {
+                            null
+                        }
+
+                        appendLine(
+                            "  ${field.type.simpleName} ${field.name}" +
+                                if (staticValue != null) " = $staticValue" else ""
+                        )
+                    }
+                }
+
+                val methods: List<Method> = runCatching {
+                    clazz.declaredMethods.toList().sortedWith(
+                        compareBy<Method>({ it.name.lowercase() }, { it.parameterCount })
+                    )
+                }.getOrElse { emptyList() }
+
+                if (methods.isNotEmpty()) {
+                    appendLine("METHODS:")
+                    methods.take(180).forEach { method ->
+                        appendLine(
+                            "  ${method.returnType.simpleName} ${method.name}(" +
+                                method.parameterTypes.joinToString(", ") { it.simpleName } +
+                                ")"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun extractInteresting(text: String): List<String> {
+        val keys = listOf(
+            "descriptor",
+            "transaction_",
+            "cameraopt",
+            "virtual",
+            "inject",
+            "external",
+            "source",
+            "surface",
+            "stream",
+            "open",
+            "close",
+            "camera"
+        )
+
+        return text
+            .lineSequence()
+            .map { it.trim() }
+            .filter { line ->
+                line.isNotBlank() &&
+                    keys.any { key -> line.lowercase().contains(key) }
+            }
+            .filterNot { it.startsWith("package:") }
+            .distinct()
+            .take(120)
+            .toList()
+    }
+
+    private fun runShell(script: String): ShellResult {
+        return try {
+            val method = Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            )
+
+            method.isAccessible = true
+
+            val process = method.invoke(
+                null,
+                arrayOf("sh", "-c", script),
+                null,
+                null
+            ) as Process
+
+            val stdout = BufferedReader(InputStreamReader(process.inputStream)).readText()
+            val stderr = BufferedReader(InputStreamReader(process.errorStream)).readText()
+            val exit = process.waitFor()
+
+            ShellResult(exit, stdout, stderr)
+        } catch (t: Throwable) {
+            ShellResult(
+                -1,
+                "",
+                "${t.javaClass.name}: ${t.message}"
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        Shizuku.removeRequestPermissionResultListener(permissionResultListener)
+        Shizuku.removeBinderReceivedListener(binderReceivedListener)
+        Shizuku.removeBinderDeadListener(binderDeadListener)
+        super.onDestroy()
+    }
+
+    data class ShellResult(
+        val exitCode: Int,
+        val output: String,
+        val error: String
+    )
+
+    companion object {
+        private const val SHIZUKU_PERMISSION_REQUEST = 8008
+    }
+}
+}d" ] || continue
+              grep -R -a -l -m 1 'com.miui.cameraopt.ICameraOptManager' "${' 2>/dev/null | head -n 80
+            done
+
+            echo
+            echo '=== PACKAGE PATH HINTS ==='
+            pm list packages -f 2>&1 | grep -Ei 'cameraopt|miui.*camera|camera.*miui' | head -n 100 || true
+        """.trimIndent()
+
+        val shell = runShell(shellScript)
+
+        val allText = reflection + "\n" + shell.output + "\n" + shell.error
+        val interesting = extractInteresting(allText)
+
+        return buildString {
+            appendLine("=== VIR VID 8 • CAMERAOPT BINDER INSPECTOR ===")
+            appendLine("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+            appendLine("Android: ${android.os.Build.VERSION.RELEASE} • API ${android.os.Build.VERSION.SDK_INT}")
+            appendLine("Shizuku UID: ${runCatching { Shizuku.getUid() }.getOrDefault(-1)}")
+            appendLine()
+
+            appendLine("=== IMPORTANT FINDINGS ===")
+            if (interesting.isEmpty()) {
+                appendLine("NONE")
+            } else {
+                interesting.forEach { appendLine(it) }
+            }
+
+            appendLine()
+            appendLine(reflection)
+
+            appendLine()
+            appendLine("=== SHIZUKU CAMERAOPT INSPECTION ===")
+            appendLine("Exit: ${shell.exitCode}")
+            if (shell.output.isNotBlank()) appendLine(shell.output.trim())
+            if (shell.error.isNotBlank()) {
+                appendLine()
+                appendLine("--- STDERR ---")
+                appendLine(shell.error.trim())
+            }
+
+            appendLine()
+            appendLine("=== DONE ===")
+        }
+    }
+
+    private fun inspectClasses(): String {
+        val candidates = listOf(
+            "com.miui.cameraopt.ICameraOptManager",
+            "com.miui.cameraopt.ICameraOptManager\$Stub",
+            "com.miui.cameraopt.ICameraOptManager\$Stub\$Proxy",
+            "com.miui.cameraopt.MiuiCameraManager",
+            "com.miui.cameraopt.CameraOptManager"
+        )
+
+        return buildString {
+            appendLine("=== JAVA REFLECTION ===")
+
+            for (className in candidates) {
+                appendLine()
+                appendLine("[$className]")
+
+                val clazz = runCatching { Class.forName(className) }.getOrNull()
+
+                if (clazz == null) {
+                    appendLine("CLASS: NOT EXPOSED TO APP CLASSLOADER")
+                    continue
+                }
+
+                appendLine("CLASS: FOUND")
+                appendLine("SUPER: ${clazz.superclass?.name ?: "-"}")
+                appendLine("INTERFACES: ${clazz.interfaces.joinToString(", ") { it.name }.ifBlank { "-" }}")
+
+                val fields: List<Field> = runCatching {
+                    clazz.declaredFields.toList().sortedBy { it.name }
+                }.getOrElse { emptyList() }
+
+                if (fields.isNotEmpty()) {
+                    appendLine("FIELDS:")
+                    fields.take(160).forEach { field ->
+                        val staticValue = if (Modifier.isStatic(field.modifiers)) {
+                            runCatching {
+                                field.isAccessible = true
+                                field.get(null)?.toString()
+                            }.getOrNull()
+                        } else {
+                            null
+                        }
+
+                        appendLine(
+                            "  ${field.type.simpleName} ${field.name}" +
+                                if (staticValue != null) " = $staticValue" else ""
+                        )
+                    }
+                }
+
+                val methods: List<Method> = runCatching {
+                    clazz.declaredMethods.toList().sortedWith(
+                        compareBy<Method>({ it.name.lowercase() }, { it.parameterCount })
+                    )
+                }.getOrElse { emptyList() }
+
+                if (methods.isNotEmpty()) {
+                    appendLine("METHODS:")
+                    methods.take(180).forEach { method ->
+                        appendLine(
+                            "  ${method.returnType.simpleName} ${method.name}(" +
+                                method.parameterTypes.joinToString(", ") { it.simpleName } +
+                                ")"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun extractInteresting(text: String): List<String> {
+        val keys = listOf(
+            "descriptor",
+            "transaction_",
+            "cameraopt",
+            "virtual",
+            "inject",
+            "external",
+            "source",
+            "surface",
+            "stream",
+            "open",
+            "close",
+            "camera"
+        )
+
+        return text
+            .lineSequence()
+            .map { it.trim() }
+            .filter { line ->
+                line.isNotBlank() &&
+                    keys.any { key -> line.lowercase().contains(key) }
+            }
+            .filterNot { it.startsWith("package:") }
+            .distinct()
+            .take(120)
+            .toList()
+    }
+
+    private fun runShell(script: String): ShellResult {
+        return try {
+            val method = Shizuku::class.java.getDeclaredMethod(
+                "newProcess",
+                Array<String>::class.java,
+                Array<String>::class.java,
+                String::class.java
+            )
+
+            method.isAccessible = true
+
+            val process = method.invoke(
+                null,
+                arrayOf("sh", "-c", script),
+                null,
+                null
+            ) as Process
+
+            val stdout = BufferedReader(InputStreamReader(process.inputStream)).readText()
+            val stderr = BufferedReader(InputStreamReader(process.errorStream)).readText()
+            val exit = process.waitFor()
+
+            ShellResult(exit, stdout, stderr)
+        } catch (t: Throwable) {
+            ShellResult(
+                -1,
+                "",
+                "${t.javaClass.name}: ${t.message}"
+            )
+        }
+    }
+
+    override fun onDestroy() {
+        Shizuku.removeRequestPermissionResultListener(permissionResultListener)
+        Shizuku.removeBinderReceivedListener(binderReceivedListener)
+        Shizuku.removeBinderDeadListener(binderDeadListener)
+        super.onDestroy()
+    }
+
+    data class ShellResult(
+        val exitCode: Int,
+        val output: String,
+        val error: String
+    )
+
+    companion object {
+        private const val SHIZUKU_PERMISSION_REQUEST = 8008
+    }
+}
+}d" 2>/dev/null | head -n 80
             done
 
             echo
