@@ -1,48 +1,49 @@
 # Android Virtual Video
 
-Android non-root virtual-video experiment.
+Experimental Android virtual-video research project.
 
-## V1 — working player engine
+## Vir Vid 3
 
-- Select local video from gallery/file picker
-- Preview video
-- Continuous loop
+Vir Vid 3 uses a different application ID:
+
+`id.armagic.virvid3`
+
+This means it can be installed alongside earlier builds without uninstalling them.
+
+### V1
+
+- Select local video
+- Preview
+- Loop
 - Play / pause
-- Mute / unmute
-- FIT / CROP preview mode
-- Remembers the last selected video
-- Portrait UI for 9:16 workflows
+- Mute
+- FIT / CROP
 
-## V2 — Virtual Camera Lab
+### V2
 
-- Device / Android API detection
-- Developer Options detection
-- ADB state detection
-- Shizuku binder detection
-- Shizuku runtime permission request
-- Shizuku UID display
-- Video Surface readiness test
-- Explicit bridge status
+- Shizuku integration
+- ADB / Developer Options detection
+- Surface readiness test
 
-Shizuku provides ADB/shell-level privileges when the user starts Shizuku and grants permission. It does not by itself create a system-wide virtual camera.
+### V3
 
-## Shizuku setup
+- Camera2 camera ID enumeration
+- Front / back / external lens detection
+- Hardware level detection
+- Sensor orientation
+- Camera capabilities
+- SurfaceTexture output sizes
+- Concurrent camera sets
+- Camera extension modes
+- Camera service probe through Shizuku shell
+- Separate APK identity: **Vir Vid 3**
 
-1. Install Shizuku.
-2. Enable Developer Options.
-3. Enable Wireless Debugging or start Shizuku using ADB.
-4. Start Shizuku.
-5. Open Virtual Video.
-6. Tap Refresh Capability.
-7. Tap Minta Izin Shizuku.
-8. Select a video.
-9. Tap Test Video Surface.
+V3 is still a capability probe. It does not yet replace the camera input of another app.
 
 ## Build
 
-Requirements:
+GitHub Actions builds the debug APK automatically.
 
-- JDK 17
-- Android SDK 35
+Artifact name:
 
-GitHub Actions builds the debug APK on every push to main.
+`vir-vid-3-debug`
