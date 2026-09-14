@@ -191,11 +191,11 @@ class MainActivity : AppCompatActivity() {
             "com.miui.cameraopt.MiuiCameraManager",
             "com.miui.cameraopt.CameraOptManager",
             "com.miui.cameraopt.ICameraOptManager",
-            "com.miui.cameraopt.ICameraOptManager\\$Stub",
+            "com.miui.cameraopt.ICameraOptManager\$Stub",
             "com.xiaomi.camera.CameraManager",
             "com.xiaomi.camera.CameraOptManager",
             "com.mediatek.capctrl.aidl.IMtkCapCtrl",
-            "com.mediatek.capctrl.aidl.IMtkCapCtrl\\$Stub",
+            "com.mediatek.capctrl.aidl.IMtkCapCtrl\$Stub",
             "com.mediatek.camera.common.device.CameraDeviceManager",
             "com.mediatek.camera.common.device.v2.Camera2DeviceManager"
         )
