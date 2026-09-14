@@ -1,8 +1,8 @@
 # Android Virtual Video
 
-Android video-loop player prototype.
+Android non-root virtual-video experiment.
 
-## V1 features
+## V1 — working player engine
 
 - Select local video from gallery/file picker
 - Preview video
@@ -12,29 +12,37 @@ Android video-loop player prototype.
 - FIT / CROP preview mode
 - Remembers the last selected video
 - Portrait UI for 9:16 workflows
-- GitHub Actions debug APK build
 
-## Build locally
+## V2 — Virtual Camera Lab
 
-Open this repository in Android Studio and let Gradle sync.
+- Device / Android API detection
+- Developer Options detection
+- ADB state detection
+- Shizuku binder detection
+- Shizuku runtime permission request
+- Shizuku UID display
+- Video Surface readiness test
+- Explicit bridge status
+
+Shizuku provides ADB/shell-level privileges when the user starts Shizuku and grants permission. It does not by itself create a system-wide virtual camera.
+
+## Shizuku setup
+
+1. Install Shizuku.
+2. Enable Developer Options.
+3. Enable Wireless Debugging or start Shizuku using ADB.
+4. Start Shizuku.
+5. Open Virtual Video.
+6. Tap Refresh Capability.
+7. Tap Minta Izin Shizuku.
+8. Select a video.
+9. Tap Test Video Surface.
+
+## Build
 
 Requirements:
 
 - JDK 17
 - Android SDK 35
 
-Then run the `app` configuration.
-
-## Build on GitHub
-
-Every push to `main` runs:
-
-```
-gradle :app:assembleDebug
-```
-
-When the workflow finishes, download the `virtual-video-debug` artifact from the Actions run.
-
-## Current scope
-
-This first version is a standalone local video player/loop engine. It does not replace another app's camera input.
+GitHub Actions builds the debug APK on every push to main.
