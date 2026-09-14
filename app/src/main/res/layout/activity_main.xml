@@ -16,16 +16,16 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Vir Vid 5"
+            android:text="Vir Vid 7"
             android:textColor="@color/white"
-            android:textSize="28sp"
+            android:textSize="30sp"
             android:textStyle="bold" />
 
         <TextView
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Background Engine + Direct TikTok Test"
+            android:text="Xiaomi / MediaTek Vendor Camera API Scanner"
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 
@@ -33,65 +33,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            app:cardBackgroundColor="@color/black"
-            app:cardCornerRadius="18dp"
-            app:strokeColor="@color/surface_2"
-            app:strokeWidth="1dp">
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="420dp">
-
-                <androidx.media3.ui.PlayerView
-                    android:id="@+id/playerView"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:keepScreenOn="true"
-                    app:show_buffering="when_playing"
-                    app:use_controller="true" />
-
-                <TextView
-                    android:id="@+id/emptyText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:gravity="center"
-                    android:padding="24dp"
-                    android:text="Pilih video untuk test"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="16sp" />
-            </FrameLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/selectVideoButton"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginTop="18dp"
-            android:text="Pilih Video dari Galeri"
-            android:textAllCaps="false"
-            app:cornerRadius="14dp" />
-
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/loopSwitch"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginTop="10dp"
-            android:checked="true"
-            android:text="Loop video"
-            android:textColor="@color/white" />
-
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/muteSwitch"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="Mute audio"
-            android:textColor="@color/white" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
             app:cardBackgroundColor="@color/surface_2"
             app:cardCornerRadius="18dp"
             app:strokeColor="@color/accent"
@@ -104,59 +45,55 @@
                 android:padding="16dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:id="@+id/shizukuStatusText"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Background Video Engine"
+                    android:fontFamily="monospace"
+                    android:text="Shizuku: mengecek..."
                     android:textColor="@color/white"
-                    android:textSize="20sp"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/directStatusText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:fontFamily="monospace"
-                    android:text="Status: belum dites"
-                    android:textColor="@color/white"
-                    android:textIsSelectable="true"
-                    android:textSize="13sp" />
-
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/startDirectTestButton"
+                    android:id="@+id/scanButton"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
+                    android:layout_height="58dp"
                     android:layout_marginTop="14dp"
-                    android:text="Start Background Engine + TikTok Test"
+                    android:text="SCAN VENDOR CAMERA API"
                     android:textAllCaps="false"
                     app:cornerRadius="14dp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/openTikTokButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                <ProgressBar
+                    android:id="@+id/progressBar"
+                    style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="8dp"
-                    android:text="Buka TikTok"
-                    android:textAllCaps="false" />
+                    android:layout_height="6dp"
+                    android:layout_marginTop="12dp"
+                    android:indeterminate="true"
+                    android:visibility="gone" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/stopEngineButton"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:layout_marginTop="8dp"
-                    android:text="Stop Background Engine"
-                    android:textAllCaps="false" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:id="@+id/resultText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@color/black"
+            android:fontFamily="monospace"
+            android:padding="16dp"
+            android:text="Tekan SCAN VENDOR CAMERA API.&#10;&#10;Target: cameraopt, captctrl, Xiaomi CameraOpt, MediaTek CapCtrl."
+            android:textColor="@color/white"
+            android:textIsSelectable="true"
+            android:textSize="12sp" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:paddingBottom="20dp"
-            android:text="Saat engine aktif, decoder tetap jalan di foreground service walau Vir Vid diminimize atau TikTok dibuka."
+            android:paddingBottom="24dp"
+            android:text="Scanner hanya membaca service/dump dan metadata method. Tidak mengubah kamera atau menjalankan TikTok."
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
 
