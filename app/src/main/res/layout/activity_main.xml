@@ -25,7 +25,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Direct TikTok Bridge Test"
+            android:text="Background Engine + Direct TikTok Test"
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 
@@ -106,7 +106,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Direct TikTok Test"
+                    android:text="Background Video Engine"
                     android:textColor="@color/white"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -127,7 +127,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:layout_marginTop="14dp"
-                    android:text="Start Direct TikTok Test"
+                    android:text="Start Background Engine + TikTok Test"
                     android:textAllCaps="false"
                     app:cornerRadius="14dp" />
 
@@ -139,6 +139,15 @@
                     android:layout_marginTop="8dp"
                     android:text="Buka TikTok"
                     android:textAllCaps="false" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/stopEngineButton"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="8dp"
+                    android:text="Stop Background Engine"
+                    android:textAllCaps="false" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -147,7 +156,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:paddingBottom="20dp"
-            android:text="Tes ini langsung memeriksa apakah device punya external camera + izin injection yang dibutuhkan Android untuk mengganti kamera app tertentu."
+            android:text="Saat engine aktif, decoder tetap jalan di foreground service walau Vir Vid diminimize atau TikTok dibuka."
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
 
