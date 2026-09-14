@@ -2,6 +2,10 @@ package id.armagic.virtualvideo
 
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.SurfaceTexture
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraExtensionCharacteristics
+import android.hardware.camera2.CameraManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -65,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         setupPlayer()
         setupControls()
         setupVirtualCameraLab()
+        setupCameraProbe()
         restoreLastVideo()
     }
 
@@ -103,11 +108,7 @@ class MainActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            if (player.isPlaying) {
-                player.pause()
-            } else {
-                player.play()
-            }
+            if (player.isPlaying) player.pause() else player.play()
         }
 
         binding.loopSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -136,19 +137,16 @@ class MainActivity : AppCompatActivity() {
         Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
         Shizuku.addBinderDeadListener(binderDeadListener)
 
-        binding.refreshCapabilityButton.setOnClickListener {
-            refreshCapabilities()
-        }
-
-        binding.requestShizukuButton.setOnClickListener {
-            requestShizukuPermission()
-        }
-
-        binding.startSurfaceTestButton.setOnClickListener {
-            runSurfaceTest()
-        }
+        binding.refreshCapabilityButton.setOnClickListener { refreshCapabilities() }
+        binding.requestShizukuButton.setOnClickListener { requestShizukuPermission() }
+        binding.startSurfaceTestButton.setOnClickListener { runSurfaceTest() }
 
         refreshCapabilities()
+    }
+
+    private fun setupCameraProbe() {
+        binding.runCameraProbeButton.setOnClickListener { runCameraProbe() }
+        binding.runShellProbeButton.setOnClickListener { runCameraServiceProbe() }
     }
 
     private fun refreshCapabilities() {
@@ -172,9 +170,7 @@ class MainActivity : AppCompatActivity() {
             "Device: ${Build.MANUFACTURER} ${Build.MODEL} • Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n" +
             "Developer Options: ${if (developerOptionsEnabled) "ON" else "OFF"} • ADB: ${if (adbEnabled) "ON" else "OFF"}"
 
-        val binderAlive = runCatching {
-            Shizuku.pingBinder()
-        }.getOrDefault(false)
+        val binderAlive = runCatching { Shizuku.pingBinder() }.getOrDefault(false)
 
         val permissionGranted = if (binderAlive) {
             runCatching {
@@ -185,39 +181,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.shizukuStatusText.text = when {
-            !binderAlive ->
-                "Shizuku: binder belum aktif • jalankan Shizuku lalu refresh"
+            !binderAlive -> "Shizuku: binder belum aktif"
             permissionGranted ->
                 "Shizuku: AKTIF • permission GRANTED • UID ${runCatching { Shizuku.getUid() }.getOrDefault(-1)}"
-            else ->
-                "Shizuku: AKTIF • permission BELUM diberikan"
+            else -> "Shizuku: AKTIF • permission BELUM diberikan"
         }
 
         binding.requestShizukuButton.isEnabled = binderAlive && !permissionGranted
 
-        if (!binderAlive) {
-            binding.bridgeStatusText.text =
-                "Bridge: menunggu Shizuku binder"
-        } else if (!permissionGranted) {
-            binding.bridgeStatusText.text =
-                "Bridge: menunggu permission Shizuku"
-        } else if (selectedVideoUri == null) {
-            binding.bridgeStatusText.text =
-                "Bridge: privilege siap • pilih video untuk test surface"
-        } else {
-            binding.bridgeStatusText.text =
-                "Bridge: privilege + video siap • surface dapat diuji"
+        binding.bridgeStatusText.text = when {
+            !binderAlive -> "Bridge: menunggu Shizuku binder"
+            !permissionGranted -> "Bridge: menunggu permission Shizuku"
+            selectedVideoUri == null -> "Bridge: privilege siap • pilih video untuk test surface"
+            else -> "Bridge: privilege + video siap • surface dapat diuji"
         }
     }
 
     private fun requestShizukuPermission() {
-        val binderAlive = runCatching {
-            Shizuku.pingBinder()
-        }.getOrDefault(false)
+        val binderAlive = runCatching { Shizuku.pingBinder() }.getOrDefault(false)
 
         if (!binderAlive) {
-            binding.bridgeStatusText.text =
-                "Bridge: Shizuku belum aktif. Start Shizuku via Wireless Debugging/ADB."
+            binding.bridgeStatusText.text = "Bridge: Shizuku belum aktif"
             return
         }
 
@@ -226,8 +210,7 @@ class MainActivity : AppCompatActivity() {
         }.getOrDefault(PackageManager.PERMISSION_DENIED)
 
         if (currentPermission == PackageManager.PERMISSION_GRANTED) {
-            binding.bridgeStatusText.text =
-                "Bridge: permission Shizuku sudah GRANTED"
+            binding.bridgeStatusText.text = "Bridge: permission Shizuku sudah GRANTED"
             refreshCapabilities()
             return
         }
@@ -247,24 +230,172 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        if (!player.isPlaying) {
-            player.play()
-        }
+        if (!player.isPlaying) player.play()
 
-        val binderAlive = runCatching {
-            Shizuku.pingBinder()
-        }.getOrDefault(false)
-
+        val binderAlive = runCatching { Shizuku.pingBinder() }.getOrDefault(false)
         val permissionGranted = binderAlive && runCatching {
             Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
         }.getOrDefault(false)
 
         binding.bridgeStatusText.text =
             if (permissionGranted) {
-                "Surface test: OK • decoder berjalan • Shizuku shell privilege siap • global camera bridge belum diaktifkan"
+                "Surface test: OK • decoder berjalan • Shizuku shell privilege siap"
             } else {
                 "Surface test: OK • decoder berjalan • Shizuku belum siap"
             }
+    }
+
+    private fun runCameraProbe() {
+        val manager = getSystemService(CameraManager::class.java)
+
+        val report = buildString {
+            appendLine("=== CAMERA PROBE ===")
+            appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
+            appendLine("Android: ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}")
+            appendLine("Package: $packageName")
+            appendLine()
+
+            val ids = runCatching { manager.cameraIdList.toList() }.getOrElse {
+                appendLine("cameraIdList ERROR: ${it.javaClass.simpleName}: ${it.message}")
+                emptyList()
+            }
+
+            appendLine("Camera IDs (${ids.size}): ${ids.joinToString(", ")}")
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val concurrent = runCatching { manager.concurrentCameraIds }.getOrNull()
+                appendLine("Concurrent camera sets: ${concurrent?.size ?: 0}")
+                concurrent?.forEachIndexed { index, set ->
+                    appendLine("  Set ${index + 1}: ${set.joinToString(", ")}")
+                }
+            }
+
+            ids.forEach { cameraId ->
+                appendLine()
+                appendLine("--- Camera $cameraId ---")
+
+                runCatching {
+                    val c = manager.getCameraCharacteristics(cameraId)
+
+                    val facing = when (c.get(CameraCharacteristics.LENS_FACING)) {
+                        CameraCharacteristics.LENS_FACING_FRONT -> "FRONT"
+                        CameraCharacteristics.LENS_FACING_BACK -> "BACK"
+                        CameraCharacteristics.LENS_FACING_EXTERNAL -> "EXTERNAL"
+                        else -> "UNKNOWN"
+                    }
+
+                    val level = when (c.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)) {
+                        CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY -> "LEGACY"
+                        CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED -> "LIMITED"
+                        CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_FULL -> "FULL"
+                        CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_3 -> "LEVEL_3"
+                        CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL -> "EXTERNAL"
+                        else -> "UNKNOWN"
+                    }
+
+                    appendLine("Facing: $facing")
+                    appendLine("Hardware level: $level")
+                    appendLine("Sensor orientation: ${c.get(CameraCharacteristics.SENSOR_ORIENTATION)}")
+
+                    val caps = c.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+                        ?.joinToString(", ") ?: "-"
+                    appendLine("Capabilities: $caps")
+
+                    val map = c.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+                    val textureSizes = map?.getOutputSizes(SurfaceTexture::class.java)
+                        ?.sortedByDescending { it.width.toLong() * it.height.toLong() }
+                        ?.take(10)
+                        ?.joinToString(", ") { "${it.width}x${it.height}" }
+                        ?: "-"
+
+                    appendLine("SurfaceTexture sizes: $textureSizes")
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        val ext = runCatching {
+                            manager.getCameraExtensionCharacteristics(cameraId)
+                                .supportedExtensions
+                        }.getOrDefault(emptyList())
+
+                        appendLine(
+                            "Extensions: " +
+                                if (ext.isEmpty()) "-" else ext.joinToString(", ") { extensionName(it) }
+                        )
+                    }
+                }.onFailure {
+                    appendLine("ERROR: ${it.javaClass.simpleName}: ${it.message}")
+                }
+            }
+        }
+
+        binding.cameraProbeText.text = report
+    }
+
+    private fun runCameraServiceProbe() {
+        val binderAlive = runCatching { Shizuku.pingBinder() }.getOrDefault(false)
+        val permissionGranted = binderAlive && runCatching {
+            Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+        }.getOrDefault(false)
+
+        if (!permissionGranted) {
+            binding.cameraProbeText.text =
+                "Camera service probe butuh Shizuku permission GRANTED."
+            return
+        }
+
+        binding.cameraProbeText.text = "Menjalankan camera service probe..."
+
+        Thread {
+            val result = runCatching {
+                val command =
+                    "echo '=== CAMERA SERVICES ==='; " +
+                    "service list | grep -i camera; " +
+                    "echo; echo '=== MEDIA.CAMERA SUMMARY ==='; " +
+                    "dumpsys media.camera | head -n 100"
+
+                @Suppress("DEPRECATION")
+                val process = Shizuku.newProcess(
+                    arrayOf("sh", "-c", command),
+                    null,
+                    null
+                )
+
+                val stdout = process.inputStream.bufferedReader().use { it.readText() }
+                val stderr = process.errorStream.bufferedReader().use { it.readText() }
+                process.waitFor()
+
+                buildString {
+                    append(stdout.ifBlank { "(no stdout)" })
+                    if (stderr.isNotBlank()) {
+                        appendLine()
+                        appendLine("=== STDERR ===")
+                        append(stderr)
+                    }
+                    appendLine()
+                    appendLine("Exit: ${process.exitValue()}")
+                }
+            }.getOrElse {
+                "Shell probe ERROR: ${it.javaClass.simpleName}: ${it.message}"
+            }
+
+            runOnUiThread {
+                binding.cameraProbeText.text = result
+            }
+        }.start()
+    }
+
+    private fun extensionName(value: Int): String {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            when (value) {
+                CameraExtensionCharacteristics.EXTENSION_AUTOMATIC -> "AUTO"
+                CameraExtensionCharacteristics.EXTENSION_BOKEH -> "BOKEH"
+                CameraExtensionCharacteristics.EXTENSION_FACE_RETOUCH -> "FACE_RETOUCH"
+                CameraExtensionCharacteristics.EXTENSION_HDR -> "HDR"
+                CameraExtensionCharacteristics.EXTENSION_NIGHT -> "NIGHT"
+                else -> value.toString()
+            }
+        } else {
+            value.toString()
+        }
     }
 
     private fun loadVideo(uri: Uri, autoPlay: Boolean) {
@@ -273,9 +404,7 @@ class MainActivity : AppCompatActivity() {
         player.setMediaItem(MediaItem.fromUri(uri))
         player.prepare()
 
-        if (autoPlay) {
-            player.play()
-        }
+        if (autoPlay) player.play()
 
         getPreferences(MODE_PRIVATE)
             .edit()
@@ -346,9 +475,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        if (player.isPlaying) {
-            player.pause()
-        }
+        if (player.isPlaying) player.pause()
     }
 
     override fun onDestroy() {
