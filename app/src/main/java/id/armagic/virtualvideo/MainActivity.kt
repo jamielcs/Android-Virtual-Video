@@ -191,11 +191,11 @@ class MainActivity : AppCompatActivity() {
             "com.miui.cameraopt.MiuiCameraManager",
             "com.miui.cameraopt.CameraOptManager",
             "com.miui.cameraopt.ICameraOptManager",
-            "com.miui.cameraopt.ICameraOptManager$Stub",
+            "com.miui.cameraopt.ICameraOptManager\\$Stub",
             "com.xiaomi.camera.CameraManager",
             "com.xiaomi.camera.CameraOptManager",
             "com.mediatek.capctrl.aidl.IMtkCapCtrl",
-            "com.mediatek.capctrl.aidl.IMtkCapCtrl$Stub",
+            "com.mediatek.capctrl.aidl.IMtkCapCtrl\\$Stub",
             "com.mediatek.camera.common.device.CameraDeviceManager",
             "com.mediatek.camera.common.device.v2.Camera2DeviceManager"
         )
@@ -218,15 +218,16 @@ class MainActivity : AppCompatActivity() {
 
                 appendLine("CLASS: FOUND")
 
-                val methods = runCatching {
+                val methods: List<Method> = runCatching {
                     clazz.declaredMethods
+                        .toList()
                         .sortedWith(
                             compareBy<Method>(
                                 { it.name.lowercase() },
                                 { it.parameterCount }
                             )
                         )
-                }.getOrDefault(emptyArray())
+                }.getOrElse { emptyList() }
 
                 if (methods.isEmpty()) {
                     appendLine("METHODS: NONE / HIDDEN")
