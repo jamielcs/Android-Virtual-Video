@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-permission android:name="android.permission.CAMERA_INJECT_EXTERNAL_CAMERA" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <queries>
-        <package android:name="com.zhiliaoapp.musically" />
-        <package android:name="com.ss.android.ugc.trill" />
-        <package android:name="com.ss.android.ugc.aweme" />
-    </queries>
-
     <uses-feature
         android:name="android.hardware.camera.any"
         android:required="false" />
 
     <application
         android:allowBackup="true"
-        android:label="Vir Vid 5"
+        android:label="Vir Vid 7"
         android:supportsRtl="true"
         android:theme="@style/Theme.VirtualVideo">
 
-        <service
-            android:name=".BackgroundVideoService"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
+        <meta-data
+            android:name="dev.rikka.shizuku.api.V3_SUPPORT"
+            android:value="true" />
+
+        <meta-data
+            android:name="dev.rikka.shizuku.api.REQUEST_PERMISSION_REPLY_IN_LISTENER"
+            android:value="true" />
 
         <activity
             android:name=".MainActivity"
